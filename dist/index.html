@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nén Ảnh Online - Compress Image Tool</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>" />
+  <script type="module" crossorigin src="./assets/index-DEMbmAdx.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-xc0pOmqi.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="container">
+        <h1>🖼️ Nén Ảnh Online</h1>
+        <p class="subtitle">Nén, chuyển đổi định dạng & resize ảnh ngay trên trình duyệt — Không upload, không server</p>
+      </div>
+    </header>
+
+    <!-- Upload Zone -->
+    <section class="section">
+      <div class="container">
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-zone__content">
+            <svg class="drop-zone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p class="drop-zone__text">Kéo thả ảnh vào đây hoặc <span class="drop-zone__link">chọn file</span></p>
+            <p class="drop-zone__hint">Hỗ trợ: JPG, PNG, WebP, GIF, BMP, TIFF — Tối đa 50 ảnh</p>
+          </div>
+          <input type="file" id="fileInput" multiple accept="image/*" hidden />
+        </div>
+      </div>
+    </section>
+
+    <!-- Preview & Edit -->
+    <section id="previewSection" class="section hidden">
+      <div class="container">
+        <div class="section-header">
+          <h2>📷 Ảnh đã chọn (<span id="imageCount">0</span>)</h2>
+          <div class="section-actions">
+            <button id="clearAllBtn" class="btn btn--outline btn--sm">🗑️ Xóa tất cả</button>
+            <button id="addMoreBtn" class="btn btn--outline btn--sm">➕ Thêm ảnh</button>
+          </div>
+        </div>
+        <div id="previewGrid" class="preview-grid"></div>
+      </div>
+    </section>
+
+    <!-- Image Editor Modal -->
+    <div id="editorModal" class="modal hidden">
+      <div class="modal__backdrop"></div>
+      <div class="modal__content modal__content--editor">
+        <div class="modal__header">
+          <h3 id="editorTitle">Chỉnh sửa ảnh</h3>
+          <button class="modal__close" id="editorClose">&times;</button>
+        </div>
+        <div class="modal__body">
+          <div class="editor-canvas-wrap">
+            <canvas id="editorCanvas"></canvas>
+          </div>
+          <div class="editor-tools">
+            <div class="editor-tool-group">
+              <label>Xoay:</label>
+              <button class="btn btn--sm" id="rotateLeftBtn">↺ -90°</button>
+              <button class="btn btn--sm" id="rotateRightBtn">↻ +90°</button>
+            </div>
+            <div class="editor-tool-group">
+              <label>Crop:</label>
+              <button class="btn btn--sm" id="cropToggleBtn">✂️ Bật Crop</button>
+              <button class="btn btn--sm hidden" id="cropApplyBtn">✅ Áp dụng Crop</button>
+              <button class="btn btn--sm hidden" id="cropCancelBtn">❌ Hủy Crop</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button class="btn btn--outline" id="editorCancelBtn">Hủy</button>
+          <button class="btn btn--primary" id="editorSaveBtn">💾 Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare Modal -->
+    <div id="compareModal" class="modal hidden">
+      <div class="modal__backdrop"></div>
+      <div class="modal__content modal__content--compare">
+        <div class="modal__header">
+          <h3>So sánh Before / After</h3>
+          <button class="modal__close" id="compareClose">&times;</button>
+        </div>
+        <div class="modal__body">
+          <div class="compare-container" id="compareContainer">
+            <img id="compareOriginal" class="compare-img" alt="Original" />
+            <div class="compare-overlay" id="compareOverlay">
+              <img id="compareCompressed" class="compare-img" alt="Compressed" />
+            </div>
+            <div class="compare-slider" id="compareSlider">
+              <div class="compare-slider__line"></div>
+              <div class="compare-slider__handle">⟷</div>
+            </div>
+          </div>
+          <div class="compare-info">
+            <div class="compare-info__item">
+              <strong>Gốc:</strong> <span id="compareOrigSize">-</span>
+            </div>
+            <div class="compare-info__item">
+              <strong>Sau nén:</strong> <span id="compareCompSize">-</span>
+            </div>
+            <div class="compare-info__item">
+              <strong>Giảm:</strong> <span id="compareReduction">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <section id="settingsSection" class="section hidden">
+      <div class="container">
+        <h2>⚙️ Cài đặt nén</h2>
+        <div class="settings-grid">
+          <div class="setting-card">
+            <label class="setting-label">
+              🎚️ Chất lượng (Quality)
+              <span class="setting-value" id="qualityValue">80</span>%
+            </label>
+            <input type="range" id="qualitySlider" min="1" max="100" value="80" class="slider" />
+            <div class="slider-labels">
+              <span>Nhỏ nhất</span>
+              <span>Tốt nhất</span>
+            </div>
+          </div>
+          <div class="setting-card">
+            <label class="setting-label">📐 Chiều rộng tối đa (px)</label>
+            <input type="number" id="maxWidthInput" value="1920" min="100" max="10000" step="10" class="input" />
+            <div class="preset-btns">
+              <button class="btn btn--tag" data-width="640">640</button>
+              <button class="btn btn--tag" data-width="800">800</button>
+              <button class="btn btn--tag" data-width="1024">1024</button>
+              <button class="btn btn--tag" data-width="1280">1280</button>
+              <button class="btn btn--tag active" data-width="1920">1920</button>
+              <button class="btn btn--tag" data-width="2560">2560</button>
+            </div>
+          </div>
+          <div class="setting-card">
+            <label class="setting-label">🖼️ Định dạng xuất</label>
+            <div class="format-btns">
+              <button class="btn btn--format active" data-format="webp">WebP</button>
+              <button class="btn btn--format" data-format="jpeg">JPEG</button>
+              <button class="btn btn--format" data-format="png">PNG</button>
+              <button class="btn btn--format" data-format="original">Giữ gốc</button>
+            </div>
+          </div>
+          <div class="setting-card">
+            <label class="setting-label">📝 Batch Rename (tùy chọn)</label>
+            <input type="text" id="renamePattern" placeholder="vd: image_{n} → image_1, image_2..." class="input" />
+            <p class="hint">Dùng <code>{n}</code> cho số thứ tự, <code>{name}</code> cho tên gốc</p>
+          </div>
+        </div>
+
+        <div class="compress-action">
+          <button id="compressBtn" class="btn btn--primary btn--lg">
+            🚀 Bắt đầu nén
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress -->
+    <section id="progressSection" class="section hidden">
+      <div class="container">
+        <div class="progress-wrap">
+          <div class="spinner"></div>
+          <h2>Đang nén ảnh...</h2>
+          <div class="progress-bar">
+            <div class="progress-bar__fill" id="progressFill" style="width:0%"></div>
+          </div>
+          <p class="progress-text"><span id="progressText">0</span>% — <span id="progressDetail">0/0</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section id="resultsSection" class="section hidden">
+      <div class="container">
+        <div class="section-header">
+          <h2>✅ Kết quả nén</h2>
+          <div class="section-actions">
+            <button id="downloadAllBtn" class="btn btn--primary">
+              📦 Tải tất cả (ZIP)
+            </button>
+          </div>
+        </div>
+        <div class="results-summary" id="resultsSummary"></div>
+        <div id="resultsGrid" class="results-grid"></div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p>🔒 Ảnh được xử lý 100% trên trình duyệt — Không upload lên server</p>
+        <p class="footer-tech">Powered by browser-image-compression + JSZip + Vite</p>
+      </div>
+    </footer>
+  </div>
+
+</body>
+</html>
