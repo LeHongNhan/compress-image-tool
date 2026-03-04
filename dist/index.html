@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nén Ảnh Online - Compress Image Tool</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>" />
-  <script type="module" crossorigin src="./assets/index-DEMbmAdx.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-xc0pOmqi.css">
+  <script type="module" crossorigin src="./assets/index-CW1BjD2q.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BkHpxYrf.css">
 </head>
 <body>
   <div id="app">
@@ -158,6 +158,132 @@
             <label class="setting-label">📝 Batch Rename (tùy chọn)</label>
             <input type="text" id="renamePattern" placeholder="vd: image_{n} → image_1, image_2..." class="input" />
             <p class="hint">Dùng <code>{n}</code> cho số thứ tự, <code>{name}</code> cho tên gốc</p>
+          </div>
+        </div>
+
+        <!-- Watermark Section -->
+        <div class="watermark-section">
+          <div class="watermark-toggle">
+            <label class="watermark-checkbox">
+              <input type="checkbox" id="watermarkEnabled" />
+              <span class="watermark-checkbox__mark"></span>
+              <span class="watermark-checkbox__text">💧 Dán Watermark / Logo</span>
+            </label>
+          </div>
+
+          <div id="watermarkConfig" class="watermark-config hidden">
+            <div class="watermark-grid">
+              <!-- Logo upload -->
+              <div class="setting-card">
+                <label class="setting-label">🖼️ Chọn Logo</label>
+                <div id="logoDropZone" class="logo-drop-zone">
+                  <div id="logoPlaceholder" class="logo-drop-zone__placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <span>Kéo thả hoặc click để chọn logo (PNG)</span>
+                  </div>
+                  <div id="logoPreviewWrap" class="logo-preview-wrap hidden">
+                    <img id="logoPreviewImg" class="logo-preview-img" alt="Logo preview" />
+                    <button id="logoRemoveBtn" class="logo-remove-btn" title="Xóa logo">×</button>
+                  </div>
+                  <input type="file" id="logoInput" accept="image/png,image/svg+xml,image/webp" hidden />
+                </div>
+              </div>
+
+              <!-- Mode selection -->
+              <div class="setting-card">
+                <label class="setting-label">🎯 Chế độ Watermark</label>
+                <div class="wm-mode-cards">
+                  <button class="wm-mode-card active" data-wm-mode="corner">
+                    <span class="wm-mode-card__icon">📌</span>
+                    <span class="wm-mode-card__title">Góc cố định</span>
+                    <span class="wm-mode-card__desc">Logo ở 1 góc ảnh</span>
+                  </button>
+                  <button class="wm-mode-card" data-wm-mode="center">
+                    <span class="wm-mode-card__icon">🎯</span>
+                    <span class="wm-mode-card__title">Giữa ảnh</span>
+                    <span class="wm-mode-card__desc">Logo giữa, opacity thấp</span>
+                  </button>
+                  <button class="wm-mode-card" data-wm-mode="tile">
+                    <span class="wm-mode-card__icon">🔲</span>
+                    <span class="wm-mode-card__title">Tile toàn ảnh</span>
+                    <span class="wm-mode-card__desc">Lặp logo khắp ảnh</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Position (corner mode) -->
+              <div class="setting-card" id="wmPositionCard">
+                <label class="setting-label">📍 Vị trí Logo</label>
+                <div class="wm-position-grid">
+                  <button class="wm-pos-btn" data-wm-pos="top-left">↖ Trên trái</button>
+                  <button class="wm-pos-btn" data-wm-pos="top-right">↗ Trên phải</button>
+                  <button class="wm-pos-btn" data-wm-pos="bottom-left">↙ Dưới trái</button>
+                  <button class="wm-pos-btn active" data-wm-pos="bottom-right">↘ Dưới phải</button>
+                </div>
+              </div>
+
+              <!-- Opacity -->
+              <div class="setting-card">
+                <label class="setting-label">
+                  🌫️ Độ trong suốt (Opacity)
+                  <span class="setting-value" id="wmOpacityValue">60</span>%
+                </label>
+                <input type="range" id="wmOpacitySlider" min="5" max="100" value="60" class="slider" />
+                <div class="slider-labels">
+                  <span>Mờ</span>
+                  <span>Đậm</span>
+                </div>
+              </div>
+
+              <!-- Scale -->
+              <div class="setting-card">
+                <label class="setting-label">
+                  📏 Kích thước Logo
+                  <span class="setting-value" id="wmScaleValue">20</span>%
+                </label>
+                <input type="range" id="wmScaleSlider" min="3" max="80" value="20" class="slider" />
+                <div class="slider-labels">
+                  <span>Nhỏ</span>
+                  <span>Lớn</span>
+                </div>
+              </div>
+
+              <!-- Margin (corner mode) -->
+              <div class="setting-card" id="wmMarginCard">
+                <label class="setting-label">
+                  📐 Khoảng cách lề
+                  <span class="setting-value" id="wmMarginValue">20</span>px
+                </label>
+                <input type="range" id="wmMarginSlider" min="0" max="100" value="20" class="slider" />
+              </div>
+
+              <!-- Tile options -->
+              <div class="setting-card hidden" id="wmTileCard">
+                <label class="setting-label">
+                  🔲 Khoảng cách Tile
+                  <span class="setting-value" id="wmTileGapValue">60</span>px
+                </label>
+                <input type="range" id="wmTileGapSlider" min="10" max="300" value="60" class="slider" />
+                <label class="setting-label" style="margin-top:12px">
+                  🔄 Góc xoay Tile
+                  <span class="setting-value" id="wmTileRotValue">-30</span>°
+                </label>
+                <input type="range" id="wmTileRotSlider" min="-90" max="0" value="-30" class="slider" />
+              </div>
+            </div>
+
+            <!-- Watermark Preview -->
+            <div class="wm-preview-section">
+              <label class="setting-label">👁️ Xem trước Watermark</label>
+              <div class="wm-preview-wrap">
+                <canvas id="wmPreviewCanvas" class="wm-preview-canvas"></canvas>
+                <p class="wm-preview-hint" id="wmPreviewHint">Chọn logo và ảnh để xem trước</p>
+              </div>
+            </div>
           </div>
         </div>
 

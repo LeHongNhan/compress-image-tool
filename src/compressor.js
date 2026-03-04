@@ -3,6 +3,7 @@
  * Xử lý nén, resize, chuyển đổi định dạng ảnh bằng browser-image-compression + Canvas
  */
 import imageCompression from 'browser-image-compression';
+import { applyWatermark } from './watermark.js';
 
 /**
  * @typedef {Object} CompressOptions
@@ -85,16 +86,23 @@ function generateOutputName(originalName, index, pattern, ext) {
  * @param {CompressOptions} options
  * @param {number} index
  * @param {string} renamePattern
+ * @param {Object|null} watermarkConfig - watermark config with logoImg
  * @returns {Promise<CompressResult>}
  */
-export async function compressSingleImage(file, options, index = 0, renamePattern = '') {
+export async function compressSingleImage(file, options, index = 0, renamePattern = '', watermarkConfig = null) {
   const { quality, format, maxWidth } = options;
 
   const outputMime = getOutputMime(format, file.type);
   const outputExt = getOutputExt(format, file.type);
   const outputName = generateOutputName(file.name, index, renamePattern, outputExt);
 
-  // browser-image-compression options
+  // Step 1: Apply watermark if enabled (before compression)
+  let sourceFile = file;
+  if (watermarkConfig && watermarkConfig.logoImg) {
+    sourceFile = await applyWatermark(file, watermarkConfig.logoImg, watermarkConfig);
+  }
+
+  // Step 2: Compress
   const compressionOptions = {
     maxSizeMB: 50, // no real size limit, we use quality
     maxWidthOrHeight: maxWidth,
@@ -110,7 +118,7 @@ export async function compressSingleImage(file, options, index = 0, renamePatter
     // PNG is lossless, resize still applies
   }
 
-  const compressedFile = await imageCompression(file, compressionOptions);
+  const compressedFile = await imageCompression(sourceFile, compressionOptions);
 
   // Convert to correct format if needed (browser-image-compression might not handle all conversions)
   let finalBlob = compressedFile;
@@ -192,15 +200,16 @@ async function convertBlobFormat(blob, mime, quality, maxWidth) {
  * @param {CompressOptions} options
  * @param {string} renamePattern
  * @param {(progress: number, current: number, total: number) => void} onProgress
+ * @param {Object|null} watermarkConfig
  * @returns {Promise<CompressResult[]>}
  */
-export async function compressBatch(files, options, renamePattern = '', onProgress) {
+export async function compressBatch(files, options, renamePattern = '', onProgress, watermarkConfig = null) {
   const results = [];
   const total = files.length;
 
   for (let i = 0; i < total; i++) {
     try {
-      const result = await compressSingleImage(files[i], options, i, renamePattern);
+      const result = await compressSingleImage(files[i], options, i, renamePattern, watermarkConfig);
       results.push(result);
     } catch (err) {
       console.error(`Error compressing ${files[i].name}:`, err);

@@ -8,6 +8,7 @@ import { createZipFromResults, downloadBlob } from './zip.js';
 import { formatBytes, getReductionClass, el, show, hide } from './utils.js';
 import { ImageEditor } from './editor.js';
 import { CompareSlider } from './compare.js';
+import { applyWatermark, loadImage, renderWatermarkPreview, DEFAULT_WATERMARK_CONFIG } from './watermark.js';
 
 // ============================================
 // State
@@ -21,6 +22,9 @@ const state = {
     maxWidth: 1920,
     renamePattern: '',
   },
+  watermark: { ...DEFAULT_WATERMARK_CONFIG },
+  logoFile: null,      // File (logo PNG)
+  logoImg: null,       // HTMLImageElement (pre-loaded)
   status: 'IDLE',     // IDLE | COMPRESSING | COMPLETED
 };
 
@@ -51,6 +55,30 @@ const resultsSection = $('#resultsSection');
 const resultsSummary = $('#resultsSummary');
 const resultsGrid = $('#resultsGrid');
 const downloadAllBtn = $('#downloadAllBtn');
+
+// Watermark DOM
+const watermarkEnabled = $('#watermarkEnabled');
+const watermarkConfig = $('#watermarkConfig');
+const logoDropZone = $('#logoDropZone');
+const logoInput = $('#logoInput');
+const logoPlaceholder = $('#logoPlaceholder');
+const logoPreviewWrap = $('#logoPreviewWrap');
+const logoPreviewImg = $('#logoPreviewImg');
+const logoRemoveBtn = $('#logoRemoveBtn');
+const wmOpacitySlider = $('#wmOpacitySlider');
+const wmOpacityValue = $('#wmOpacityValue');
+const wmScaleSlider = $('#wmScaleSlider');
+const wmScaleValue = $('#wmScaleValue');
+const wmMarginSlider = $('#wmMarginSlider');
+const wmMarginValue = $('#wmMarginValue');
+const wmTileGapSlider = $('#wmTileGapSlider');
+const wmTileGapValue = $('#wmTileGapValue');
+const wmTileRotSlider = $('#wmTileRotSlider');
+const wmTileRotValue = $('#wmTileRotValue');
+const wmPositionCard = $('#wmPositionCard');
+const wmTileCard = $('#wmTileCard');
+const wmPreviewCanvas = $('#wmPreviewCanvas');
+const wmPreviewHint = $('#wmPreviewHint');
 
 // Modules
 const editor = new ImageEditor();
@@ -220,6 +248,166 @@ $$('.btn--format[data-format]').forEach(btn => {
 });
 
 // ============================================
+// Watermark Controls
+// ============================================
+
+// Toggle watermark panel
+watermarkEnabled.addEventListener('change', () => {
+  state.watermark.enabled = watermarkEnabled.checked;
+  if (watermarkEnabled.checked) {
+    show(watermarkConfig);
+  } else {
+    hide(watermarkConfig);
+  }
+});
+
+// Logo upload
+logoDropZone.addEventListener('click', () => logoInput.click());
+logoDropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  logoDropZone.style.borderColor = 'var(--primary)';
+});
+logoDropZone.addEventListener('dragleave', () => {
+  logoDropZone.style.borderColor = '';
+});
+logoDropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  logoDropZone.style.borderColor = '';
+  const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith('image/'));
+  if (file) setLogo(file);
+});
+logoInput.addEventListener('change', () => {
+  if (logoInput.files[0]) setLogo(logoInput.files[0]);
+  logoInput.value = '';
+});
+logoRemoveBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  clearLogo();
+});
+
+async function setLogo(file) {
+  state.logoFile = file;
+  try {
+    state.logoImg = await loadImage(file);
+    logoPreviewImg.src = URL.createObjectURL(file);
+    show(logoPreviewWrap);
+    hide(logoPlaceholder);
+    updateWatermarkPreview();
+  } catch (err) {
+    console.error('Failed to load logo:', err);
+    alert('Không thể tải logo. Vui lòng chọn file ảnh hợp lệ.');
+  }
+}
+
+function clearLogo() {
+  state.logoFile = null;
+  state.logoImg = null;
+  if (logoPreviewImg.src) URL.revokeObjectURL(logoPreviewImg.src);
+  logoPreviewImg.src = '';
+  hide(logoPreviewWrap);
+  show(logoPlaceholder);
+  wmPreviewCanvas.classList.remove('visible');
+  show(wmPreviewHint);
+}
+
+// Mode selection
+$$('.wm-mode-card[data-wm-mode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.wm-mode-card[data-wm-mode]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.watermark.mode = btn.dataset.wmMode;
+    updateWatermarkModeUI();
+    updateWatermarkPreview();
+  });
+});
+
+function updateWatermarkModeUI() {
+  const mode = state.watermark.mode;
+  // Show/hide position card (corner only)
+  if (mode === 'corner') {
+    show(wmPositionCard);
+    show($('#wmMarginCard'));
+    hide(wmTileCard);
+  } else if (mode === 'tile') {
+    hide(wmPositionCard);
+    hide($('#wmMarginCard'));
+    show(wmTileCard);
+  } else {
+    hide(wmPositionCard);
+    hide($('#wmMarginCard'));
+    hide(wmTileCard);
+  }
+}
+
+// Position buttons (corner mode)
+$$('.wm-pos-btn[data-wm-pos]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.wm-pos-btn[data-wm-pos]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.watermark.position = btn.dataset.wmPos;
+    updateWatermarkPreview();
+  });
+});
+
+// Sliders
+wmOpacitySlider.addEventListener('input', () => {
+  const v = parseInt(wmOpacitySlider.value);
+  state.watermark.opacity = v / 100;
+  wmOpacityValue.textContent = v;
+  updateWatermarkPreview();
+});
+
+wmScaleSlider.addEventListener('input', () => {
+  const v = parseInt(wmScaleSlider.value);
+  state.watermark.scale = v;
+  wmScaleValue.textContent = v;
+  updateWatermarkPreview();
+});
+
+wmMarginSlider.addEventListener('input', () => {
+  const v = parseInt(wmMarginSlider.value);
+  state.watermark.margin = v;
+  wmMarginValue.textContent = v;
+  updateWatermarkPreview();
+});
+
+wmTileGapSlider.addEventListener('input', () => {
+  const v = parseInt(wmTileGapSlider.value);
+  state.watermark.tileGap = v;
+  wmTileGapValue.textContent = v;
+  updateWatermarkPreview();
+});
+
+wmTileRotSlider.addEventListener('input', () => {
+  const v = parseInt(wmTileRotSlider.value);
+  state.watermark.rotation = v;
+  wmTileRotValue.textContent = v;
+  updateWatermarkPreview();
+});
+
+// Debounced preview update
+let wmPreviewTimer = null;
+function updateWatermarkPreview() {
+  clearTimeout(wmPreviewTimer);
+  wmPreviewTimer = setTimeout(doWatermarkPreview, 200);
+}
+
+async function doWatermarkPreview() {
+  if (!state.logoImg || state.files.length === 0) {
+    wmPreviewCanvas.classList.remove('visible');
+    show(wmPreviewHint);
+    return;
+  }
+  try {
+    await renderWatermarkPreview(wmPreviewCanvas, state.files[0], state.logoImg, state.watermark);
+    wmPreviewCanvas.classList.add('visible');
+    hide(wmPreviewHint);
+  } catch (err) {
+    console.error('Preview error:', err);
+  }
+}
+
+// ============================================
 // Compress
 // ============================================
 compressBtn.addEventListener('click', startCompression);
@@ -245,6 +433,11 @@ async function startCompression() {
   // Scroll to progress
   progressSection.scrollIntoView({ behavior: 'smooth' });
 
+  // Prepare watermark config for pipeline
+  const wmConfig = state.watermark.enabled && state.logoImg
+    ? { ...state.watermark, logoImg: state.logoImg }
+    : null;
+
   try {
     const results = await compressBatch(
       state.files,
@@ -254,7 +447,8 @@ async function startCompression() {
         progressFill.style.width = progress + '%';
         progressText.textContent = progress;
         progressDetail.textContent = `${current}/${total}`;
-      }
+      },
+      wmConfig
     );
 
     state.results = results;
