@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node [vite.js](http://_vscodecontentref_/16) build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
